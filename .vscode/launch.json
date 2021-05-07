@@ -6,7 +6,8 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceRoot}/cmd/crawler"
-        }
+            "program": "${workspaceFolder}/cmd/crawler",
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }
