@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -75,6 +76,46 @@ func auth(clientId string, clientSecret string) (*BlizzardTokenResponse, error) 
 	return token, nil
 }
 
+func fetchAuctionData(token string, realmId int) (*http.Response, error) {
+	baseUrl := "https://eu.api.blizzard.com"
+
+	params := url.Values{}
+	// params.Add("region", "eu")
+	params.Add("namespace", "dynamic-eu")
+	params.Add("locale", "en_US")
+	params.Add("access_token", token)
+	log.Printf("Parameters string: %s", params.Encode())
+	// body := strings.NewReader(params.Encode())
+
+	endpoint := fmt.Sprintf(
+		"/data/wow/connected-realm/%d/auctions",
+		realmId,
+	)
+	log.Printf("Sending request to %s\n", baseUrl+endpoint)
+	req, err := http.NewRequest(
+		"GET",
+		baseUrl+endpoint+"?"+params.Encode(),
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Send request to %s\n", resp.Request.URL)
+	log.Printf("Status code is %d\n", resp.StatusCode)
+	if resp.StatusCode != 200 {
+		message, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("Bad status without message: %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("Bad status: %d. Message: %s", resp.StatusCode, string(message))
+	}
+	return resp, nil
+}
+
 func main() {
 	config := getConfig()
 	token, err := auth(config.BlizzardClientId, config.BlizzardClientSecret)
@@ -82,4 +123,14 @@ func main() {
 		log.Fatalf("Authentication failed: %v", err)
 	}
 	log.Printf("Authentication success: %v", token)
+
+	resp, err := fetchAuctionData(token.AccessToken, 509)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	items, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(string(items))
 }
